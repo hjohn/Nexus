@@ -1,0 +1,459 @@
+# Nexus Configuration File
+#
+# This file uses URI's for incoming events and resulting actions. These URI's
+# can represent:
+# - A trigger (like a key press, a remote control code or some other event)
+# - An action (switching activities, sending HTTP/MQTT commands, directly sending out IR)
+# - An intermediate URI that needs mapping via input mappings, device mappings or templates
+#
+# Built-in URI schemes:
+#   activity:
+#     activity:switch:<name> - Switches to the named activity
+#     activity:off - Switches all devices off
+#
+#   device:
+#     device:<device-id>:<mapping-name> - Translates URI to one specified by the device with the given id
+#
+# How it works:
+#
+# Connectors supply triggers in the form of a raw input event, or even just a hex string.
+# In input-mappings, these are translated to a more user-friendly action, often a command or
+# a direct action. Commands will be resolved against the active activity, while if a
+# direct action is used, the activity is bypassed and the action is always executed
+# regardless.
+#
+# Depending on the type of action, there can be several translation steps before the final
+# action is executed, for example, assuming the DVD activity is currently activated:
+#
+#   "keyboard:space" or "ir:devinput-32:KEY_SPACE" (the incoming event) ->
+#   "cmd:pause" (translated to a common command used in this file) ->
+#   "device:DVD:playpause" (based on active activity command should go to DVD device) ->
+#   "irsend:sony:32:DEADBEEF:1" (simplified template for MQTT commands from DVD device descriptor) ->
+#   "mqtt://server/cmnd/tasmota/irsend" + {<JSON payload>} (irsend template resolution to MQTT command)
+#
+# The system is quite flexible, and its possible to have multiple indirections
+# to keep the file a bit easier to use.
+
+# devices
+#
+# Defines devices. Each device has an id and mappings corresponding to commands
+# the device understand. To activate a specific mapping of a specific device, use:
+#
+#     device:<device-id>:pause
+#
+# Devices have an activation and deactivation sequence. If the device can only
+# be turned on/off with the same action, then put the same action in both the
+# activation and deactivation blocks.
+
+devices:
+  - id: MediaSystem
+    activation:
+      - wake-on-lan:5404A68A6DC0:192.168.255.255
+      - delay:100:ms
+      - wake-on-lan:5404A68A6DC0:192.168.255.255
+      - delay:1000:ms  # end delay prevents device being interacted with until sequence completes
+    deactivation:
+      - action: mediasystem:SLEEP
+    mappings:
+      up: mediasystem:UP
+      down: mediasystem:DOWN
+      left: mediasystem:LEFT
+      right: mediasystem:RIGHT
+      back: mediasystem:BACKSPACE
+      ok: mediasystem:ENTER
+      red: mediasystem:F1
+      green: mediasystem:F2
+      yellow: mediasystem:F3
+      blue: mediasystem:F4
+      pause: mediasystem:SPACE
+      menu: mediasystem:F10
+      subtitles: mediasystem:j
+      info: mediasystem:i
+      page-up: mediasystem:PAGE%20UP
+      page-down: mediasystem:PAGE%20DOWN
+      key-1: mediasystem:1
+      key-2: mediasystem:2
+      key-3: mediasystem:3
+      key-4: mediasystem:4
+      key-5: mediasystem:5
+      key-6: mediasystem:6
+      key-7: mediasystem:7
+      key-8: mediasystem:8
+      key-9: mediasystem:9
+      key-0: mediasystem:0
+
+  - id: Yamaha
+    activation:
+      - irsend:NEC:32:7E8154AB:1
+    deactivation:
+      - irsend:NEC:32:7E8154AB:1
+    mappings:
+      SET_OUTPUT_HDMI_1: irsend:NEC_LIKE:32:5EA1E21C:1
+      SET_OUTPUT_HDMI_2: irsend:NEC_LIKE:32:5EA152AC:1
+      SET_OUTPUT_HDMI_3: irsend:NEC_LIKE:32:5EA1B24C:1
+      SET_OUTPUT_HDMI_4: irsend:NEC_LIKE:32:5EA10AF4:1
+      SET_OUTPUT_HDMI_5: irsend:NEC_LIKE:32:5EA10EF0:1
+      VOL_UP: irsend:NEC:32:5EA158A7:0
+      VOL_DOWN: irsend:NEC:32:5EA1D827:0
+      MUTE: irsend:NEC:32:5EA138C7:1
+
+  - id: Epson-Projector
+    activation:
+      - irsend:NEC:32:C1AA09F6:1
+    deactivation:
+      - delay:6:s
+      - irsend:EPSON:32:C1AA8976:1
+      - delay:500:ms
+      - irsend:EPSON:32:C1AA8976:1
+      - delay:500:ms
+      - irsend:EPSON:32:C1AA8976:1
+      - delay:500:ms
+      - irsend:EPSON:32:C1AA8976:1
+      - delay:500:ms
+      - irsend:EPSON:32:C1AA8976:1
+      - delay:500:ms
+      - irsend:EPSON:32:C1AA8976:1
+
+  - id: Arris
+    activation:
+      - irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbBaAbA
+    deactivation:
+      - irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbBaAbA
+    mappings:
+      key-1: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaAaAaBbA
+      key-2: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaAaBbB
+      key-3: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaAaBaAbA
+      key-4: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaBbAaB
+      key-5: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaBbBbA
+      key-6: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaBaAbB
+      key-7: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaAaBaAaAbA
+      key-8: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbAaAaB
+      key-9: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbAaBbA
+      key-0: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbBbB
+      power: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBbBaAbA
+      play_pause: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAbBaAbA
+      rewind: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbAaAaAaBbA
+      fast_forward: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbAaBbAaB
+      stop: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbAaAaBbB
+      record: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbAaAaBaAbA
+      red: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAaAbBbA
+      green: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAaAaAbB
+      yellow: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAaAaAaAbA
+      blue: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbAaAaAaAaB
+      up: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBaAbAaB
+      down: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBaAbBbA
+      left: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBaAaAbB
+      right: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbAaAaAaB
+      ok: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaAaBaAaAaAbA
+      menu: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbBaAbBbA
+      tv: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbBbAaB
+      guide: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbBaAbB
+      radio: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbBbBaAbA
+      back: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbAaBaAbA
+      channel-up: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAbAaBbA
+      channel-down: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAaAbAaB
+      volume-up: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbBaAaAbA
+      volume-down: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAbBbB
+      mute: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBaAbAaAaB
+      source: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaAaBbAaAaBbA
+      text: irsendraw:+320-640BbAaBbBbAaAaAaAaAaAaAaBbBbAaBbA
+
+  - id: JVC
+    activation:
+      - irsend:JVC:16:C5E8:2
+    deactivation:
+      - irsend:JVC:16:C5E8:2
+    mappings:
+      SET_OUTPUT_AUX: irsend:JVC:16:C57C:1
+      SET_OUTPUT_DVD: irsend:JVC:16:C5C2:1
+      volume_up: irsend:JVC:16:C578:1
+      volume_down: irsend:JVC:16:C5F8:1
+
+# templates
+#
+# Templates can be used to simplify actions and avoid having to repeat the
+# same boilerplate each time. They can also serve as a convenient place to
+# globally change all commands of a certain type.
+#
+# Each template has an id. This id is used in actions to refer to the template.
+#
+#     <id>:<template specific stuff>
+#
+# The id of the template must be unique, and can't overlap with the names used
+# by any handlers, or the built-in handlers (cmd, activity and delay).
+#
+# Note: this is a very simplistic templating system, it can't do any complicated
+# conversions or other fancy things.
+
+templates:
+  mediasystem:
+    template: <key>
+    method: POST
+    action: http://192.168.3.17:8040/executeCommand
+    payload: '<key>'
+  irsend:
+    template: <protocol>:<bits>:<data>:<repeat>
+    method: GET
+    action: http://192.168.3.18/cm
+    query:
+      cmnd: IRSend {"Protocol":"<protocol>","Bits":<bits>,"Data":"0x<data>","Repeat":<repeat>}
+  irsendraw:
+    template: <data>
+    method: GET
+    action: http://192.168.3.18/cm
+    query:
+      cmnd: IRSend 0,<data>
+
+# handlers
+#
+# Available handlers and their the id's they respond to are defined below. Some
+# handlers may have further configuration options. The name of the handler
+# corresponds to its fully qualified class name.
+
+handlers:
+  org.int4.nexus.core.handler.MqttProtocolHandler:
+    - id: mqtt
+      max-delay: 250
+      result-topic: stat/athom/RESULT
+  org.int4.nexus.core.handler.WakeOnLanHandler:
+    - id: wake-on-lan
+  org.int4.nexus.core.handler.HttpProtocolHandler:
+    - id: http
+
+# connectors
+#
+# Connectors supply input to the system. Without a connector, the system won't do
+# anything. Some connectors require additional configuration, while others only
+# need to know the id that they should prefix to their input actions.
+
+connectors:
+  org.int4.nexus.core.connector.InputDeviceConnector:
+    - id: rc1
+      device: /dev/input/by-id/usb-TopSeed_Technology_Corp._USB_RF_Combo_Device-event-kbd
+    - id: rc2
+      device: /dev/input/by-id/usb-TopSeed_Technology_Corp._USB_RF_Combo_Device-if01-event-mouse
+  org.int4.nexus.core.connector.HciDumpConnector:
+    - id: hci
+
+# input-mappings
+#
+# Input mappings are almost always the first translation that is applied to any
+# incoming action from a connector. Inputs coming from connectors are often cryptic
+# and mapping them to a more user-friendly name is done here.
+
+input-mappings:
+  hci:001f:41000000:pressed: cmd:ok
+  hci:001f:42000000:pressed: cmd:up
+  hci:001f:42000000:held: cmd:up
+  hci:001f:43000000:pressed: cmd:down
+  hci:001f:43000000:held: cmd:down
+  hci:001f:44000000:pressed: cmd:left
+  hci:001f:44000000:held: cmd:left
+  hci:001f:45000000:pressed: cmd:right
+  hci:001f:45000000:held: cmd:right
+  hci:001f:2402:pressed: cmd:back
+  hci:001f:2302:pressed: cmd:home   # Home Key
+  hci:001f:96000000:pressed: cmd:menu  # Options Key
+  hci:001f:8d000000:pressed: cmd:guide    # TV key
+  hci:001f:2a020000:pressed: cmd:bookmark  # Bookmark key
+  hci:001f:2102:pressed: cmd:pause  # Google Assistant key
+  hci:001f:69000000:pressed: cmd:red
+  hci:001f:6a000000:pressed: cmd:green
+  hci:001f:6c000000:pressed: cmd:yellow
+  hci:001f:6b000000:pressed: cmd:blue
+  hci:001f:61000000:pressed: cmd:subtitles  # Text key
+  hci:001f:bd010000:pressed: cmd:info  # Info key
+
+  hci:0023:00001e0000000000:pressed: cmd:key-1
+  hci:0023:00001f0000000000:pressed: cmd:key-2
+  hci:0023:0000200000000000:pressed: cmd:key-3
+  hci:0023:0000210000000000:pressed: cmd:key-4
+  hci:0023:0000220000000000:pressed: cmd:key-5
+  hci:0023:0000230000000000:pressed: cmd:key-6
+  hci:0023:0000240000000000:pressed: cmd:key-7
+  hci:0023:0000250000000000:pressed: cmd:key-8
+  hci:0023:0000260000000000:pressed: cmd:key-9
+  hci:0023:0000270000000000:pressed: cmd:key-0
+  hci:0023:0000800000000000:pressed: cmd:volume-up
+  hci:0023:0000800000000000:held: cmd:volume-up
+  hci:0023:0000810000000000:pressed: cmd:volume-down
+  hci:0023:0000810000000000:held: cmd:volume-down
+  hci:001f:9c000000:pressed: cmd:channel-up
+  hci:001f:9c000000:held: cmd:channel-up
+  hci:001f:9d000000:pressed: cmd:channel-down
+  hci:001f:9d000000:held: cmd:channel-down
+  hci:001f:e2000000:pressed: cmd:mute
+  hci:001f:bb010000:pressed: cmd:source  # Source Key
+  hci:001f:30000000:long-pressed: activity:off                       # Power key
+  hci:001f:77000000:long-pressed: activity:switch:watch-tv           # YouTube key
+  hci:001f:78000000:long-pressed: activity:switch:watch-mediasystem  # Netflix key
+  hci:001f:79000000:long-pressed: activity:switch:listen-music       # Prime Video key
+  hci:001f:7a000000:long-pressed: activity:switch:watch-chromecast   # Google Play key
+
+  input-device:rc1:KEY:UP:pressed: cmd:up
+  input-device:rc1:KEY:UP:held: cmd:up
+  input-device:rc1:KEY:DOWN:pressed: cmd:down
+  input-device:rc1:KEY:DOWN:held: cmd:down
+  input-device:rc1:KEY:LEFT:pressed: cmd:left
+  input-device:rc1:KEY:LEFT:held: cmd:left
+  input-device:rc1:KEY:RIGHT:pressed: cmd:right
+  input-device:rc1:KEY:RIGHT:held: cmd:right
+  input-device:rc1:KEY:ENTER:pressed: cmd:ok
+  input-device:rc1:KEY:0:pressed: cmd:key-0
+  input-device:rc1:KEY:1:pressed: cmd:key-1
+  input-device:rc1:KEY:2:pressed: cmd:key-2
+  input-device:rc1:KEY:3:pressed: cmd:key-3
+  input-device:rc1:KEY:4:pressed: cmd:key-4
+  input-device:rc1:KEY:5:pressed: cmd:key-5
+  input-device:rc1:KEY:6:pressed: cmd:key-6
+  input-device:rc1:KEY:7:pressed: cmd:key-7
+  input-device:rc1:KEY:8:pressed: cmd:key-8
+  input-device:rc1:KEY:9:pressed: cmd:key-9
+  input-device:rc2:KEY:BACK:pressed: cmd:back
+  input-device:rc2:KEY:PROPS:pressed: cmd:info
+  input-device:rc2:KEY:MEDIA:pressed: cmd:menu
+  input-device:rc2:KEY:VOLUMEUP:pressed: cmd:volume-up
+  input-device:rc2:KEY:VOLUMEDOWN:pressed: cmd:volume-down
+  input-device:rc2:KEY:MUTE:pressed: cmd:mute
+  input-device:rc2:KEY:CHANNELUP:pressed: cmd:channel-up
+  input-device:rc2:KEY:CHANNELDOWN:pressed: cmd:channel-down
+  input-device:rc2:KEY:RED:pressed: cmd:red
+  input-device:rc2:KEY:GREEN:pressed: cmd:green
+  input-device:rc2:KEY:YELLOW:pressed: cmd:yellow
+  input-device:rc2:KEY:BLUE:pressed: cmd:blue
+  input-device:rc2:KEY:PLAY:pressed: cmd:play
+  input-device:rc2:KEY:PAUSE:pressed: cmd:pause
+  input-device:rc2:KEY:FASTFORWARD:pressed: cmd:fastforward
+  input-device:rc2:KEY:REWIND:pressed: cmd:rewind
+  input-device:rc2:KEY:NEXTSONG:pressed: cmd:next
+  input-device:rc2:KEY:PREVIOUSSONG:pressed: cmd:previous
+  input-device:rc2:KEY:RECORD:pressed: cmd:record
+  input-device:rc2:KEY:TEXT:pressed: cmd:subtitles
+  input-device:rc2:KEY:TV2:pressed: cmd:guide
+
+  input-device:rc2:KEY:SLEEP:pressed: activity:off
+  input-device:rc2:KEY:RADIO:long-pressed: activity:switch:watch-chromecast
+  input-device:rc2:KEY:MP3:long-pressed: activity:switch:watch-tv
+  input-device:rc2:KEY:CAMERA:long-pressed: activity:switch:JVC
+  input-device:rc2:KEY:VIDEO:long-pressed: activity:switch:watch-mediasystem
+
+# activities
+#
+# Activities define groups of devices that work together to provide a type of
+# entertainment. The id of the activity is used in the "activity:switch" action.
+#
+# Each activity has one or more participants. These will be activated if the
+# activity is selected. After the participating devices have been activated,
+# the actions in the "setup" will be executed to do some post activation
+# configuration of your devices.
+#
+# An activity also defines mappings. These can be triggered with the "cmd"
+# action, for example:
+#
+#     cmd:volume-up
+#
+# Only mappings from the currently active activity will be used.
+
+activities:
+  - id: watch-tv
+    description: Watch TV
+    participants:
+      - Yamaha
+      - Arris
+      - Epson-Projector
+    setup:
+      - device:Yamaha:SET_OUTPUT_HDMI_2
+    mappings:
+      volume-up: device:Yamaha:VOL_UP
+      volume-down: device:Yamaha:VOL_DOWN
+      mute: device:Yamaha:MUTE
+
+      key-0: device:Arris:key-0
+      key-1: device:Arris:key-1
+      key-2: device:Arris:key-2
+      key-3: device:Arris:key-3
+      key-4: device:Arris:key-4
+      key-5: device:Arris:key-5
+      key-6: device:Arris:key-6
+      key-7: device:Arris:key-7
+      key-8: device:Arris:key-8
+      key-9: device:Arris:key-9
+      red: device:Arris:red
+      green: device:Arris:green
+      yellow: device:Arris:yellow
+      blue: device:Arris:blue
+      left: device:Arris:left
+      right: device:Arris:right
+      up: device:Arris:up
+      down: device:Arris:down
+      ok: device:Arris:ok
+      back: device:Arris:back
+      pause: device:Arris:play_pause
+      guide: device:Arris:guide
+      channel-up: device:Arris:channel-up
+      channel-down: device:Arris:channel-down
+      menu: device:Arris:menu
+      subtitles: device:Arris:text
+
+  - id: watch-chromecast
+    description: Watch Chromecast
+    participants:
+      - Yamaha
+      - Epson-Projector
+    setup:
+      - device:Yamaha:SET_OUTPUT_HDMI_3
+    mappings:
+      volume-up: device:Yamaha:VOL_UP
+      volume-down: device:Yamaha:VOL_DOWN
+      mute: device:Yamaha:MUTE
+
+  - id: watch-mediasystem
+    description: Watch MediaSystem
+    participants:
+      - Yamaha
+      - MediaSystem
+      - Epson-Projector
+    setup:
+      - device:Yamaha:SET_OUTPUT_HDMI_5
+    mappings:
+      volume-up: device:Yamaha:VOL_UP
+      volume-down: device:Yamaha:VOL_DOWN
+      mute: device:Yamaha:MUTE
+
+      up: device:MediaSystem:up
+      down: device:MediaSystem:down
+      left: device:MediaSystem:left
+      right: device:MediaSystem:right
+      back: device:MediaSystem:back
+      ok: device:MediaSystem:ok
+      red: device:MediaSystem:red
+      green: device:MediaSystem:green
+      yellow: device:MediaSystem:yellow
+      blue: device:MediaSystem:blue
+      pause: device:MediaSystem:pause
+      menu: device:MediaSystem:menu
+      subtitles: device:MediaSystem:subtitles
+      info: device:MediaSystem:info
+      channel-up: device:MediaSystem:page-up
+      channel-down: device:MediaSystem:page-down
+      key-1: device:MediaSystem:key-1
+      key-2: device:MediaSystem:key-2
+      key-3: device:MediaSystem:key-3
+      key-4: device:MediaSystem:key-4
+      key-5: device:MediaSystem:key-5
+      key-6: device:MediaSystem:key-6
+      key-7: device:MediaSystem:key-7
+      key-8: device:MediaSystem:key-8
+      key-9: device:MediaSystem:key-9
+      key-0: device:MediaSystem:key-0
+
+  - id: listen-music
+    participants:
+      - Yamaha
+    setup:
+      - device:Yamaha:SET_OUTPUT_HDMI_4
+    mappings:
+      volume-up: device:Yamaha:VOL_UP
+      volume-down: device:Yamaha:VOL_DOWN
+      mute: device:Yamaha:MUTE
+
